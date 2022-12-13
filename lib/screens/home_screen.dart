@@ -26,38 +26,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ToDo> todoList = [];
   List<ShiftModel> shiftList = [];
-
-  getAllTasks()async{
-
+  late ShiftModel ongoingShift;
+  getAllShifts()async{
     final CollectionReference shiftsCollection = FirebaseFirestore.instance.collection('shifts');
     await shiftsCollection.get().then((event) {
       for (var doc in event.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        print("${doc.id} => ${doc.data()}");
+        // print("${doc.id} => ${doc.data()}");
         shiftList.add(
             ShiftModel(
               id: doc.id,
-               name: data['name'],
+              name: data['name'],
+              from: data['from'],
+              to: data['to'],
             )
         );
       }
     });
+    getShift();
+    getAllTasks();
+    setState(() {
 
-    // String ongoingShift = '';
-    // if(DateTime.now().hour){}
+    });
+  }
+
+  getAllTasks()async{
+
+    todoList = [];
     final CollectionReference todosCollection = FirebaseFirestore.instance.collection('tasks');
-    await todosCollection.get().then((event) {
+    await todosCollection.where("shift-id", isEqualTo: ongoingShift.id).get().then((event) {
       for (var doc in event.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        // print(data['shift-id']);
-        // print("${doc.id} => ${doc.data()}");
         todoList.add(
             ToDo(
                 id: doc.id,
                 todoText: data['task'],
                 isDone: data['done'],
-                // residentId: data['resident-id'],
-                // shiftId: data['shift-id']
+                residentId: data['resident-id'],
+                shiftId: data['shift-id']
             )
         );
       }
@@ -69,7 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
-    getAllTasks();
+    getAllShifts();
+    // getShift();
+    // getAllTasks();
     super.initState();
   }
 
@@ -90,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ElevatedButton(
           onPressed: () {
             // _addToDoItem(_todoController.text);
-            getAllTasks();
+            getAllShifts();
           },
           style: ElevatedButton.styleFrom(
             primary: AppTheme.tdBlue,
@@ -165,6 +173,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _deleteToDoItem(String id) {
+    final CollectionReference todosCollection = FirebaseFirestore.instance.collection('tasks');
+    todosCollection.doc(id).delete().then(
+          (doc) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Task Deleted Successfully")));
+          },
+      onError: (e) => print("Error updating document $e"),
+    );
     setState(() {
       todoList.removeWhere((item) => item.id == id);
     });
@@ -194,6 +210,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _foundToDo = results;
+    });
+  }
+
+  getShift(){
+    DateTime timeNow = DateTime.now();
+    if((timeNow.hour > 6  || (timeNow.hour == 6 &&  timeNow.minute > 30)) && (timeNow.hour < 14) ){
+      ongoingShift =shiftList[2];
+    }else if((timeNow.hour > 14) && (timeNow.hour < 21 ||(timeNow.hour == 21 && timeNow.minute < 30)) ){
+      ongoingShift =shiftList[1];
+    }else{
+      ongoingShift =shiftList[0];
+    }
+    setState(() {
+
     });
   }
 
