@@ -109,6 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     getAllShifts();
     getAllResidents();
+
+    _foundToDo = todoList;
     super.initState();
   }
 
@@ -180,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      for (ToDo todoo in todoList)
+                      for (ToDo todoo in _foundToDo)
                         ToDoWidget(
                           todo: todoo,
                           onToDoChanged: _handleToDoChange,
@@ -303,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) {
         final TextEditingController taskDescription = TextEditingController();
-        
+
         String? shiftName;
         String? residentName;
         late ShiftModel shift;
