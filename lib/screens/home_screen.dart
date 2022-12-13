@@ -27,7 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final CollectionReference residentsCollection = FirebaseFirestore.instance.collection('residents');
 
   List<ToDo> _foundToDo = [];
-  final _todoController = TextEditingController();
 
   bool loading = false;
 
@@ -38,80 +37,93 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Resident> residentsList = [];
 
   late ShiftModel ongoingShift;
-  getAllShifts()async{
-    setState(() {
-      loading = true;
-    });
 
-    await shiftsCollection.get().then((event) {
-      for (var doc in event.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        // print("${doc.id} => ${doc.data()}");
-        shiftList.add(
-            ShiftModel(
+  updateTasksShift() async{
+    DateTime timeNow = DateTime.now();
+    if((timeNow.hour > 6  || (timeNow.hour == 6 &&  timeNow.minute > 30)) && (timeNow.hour < 14) || (timeNow.hour == 6 &&  timeNow.minute == 30)){
+      await todosCollection.where("done", isEqualTo:false).get().then((event) {
+        for (var doc in event.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          todosCollection.doc(data['id']).set({
+            'task': data['task'],
+            'done': data['done'],
+            'resident-id': data['resident-id'],
+            'shift-id': shiftList.firstWhere((element) => element.name == "morning shift").id,
+          });
+
+          todoList.add(ToDo(
               id: doc.id,
-              name: data['name'],
-              from: data['from'],
-              to: data['to'],
-            )
-        );
-      }
-    });
-    getShift();
-    getAllTasks();
+              todoText: data['task'],
+              isDone: data['done'],
+              residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
+              residentId: data['resident-id'],
+              shiftId: data['shift-id']
+          ));
+        }
+      });
+
+      
+    }else if(((timeNow.hour > 14) && (timeNow.hour < 21 ||(timeNow.hour == 21 && timeNow.minute < 30))) || (timeNow.hour == 14)){
+      await todosCollection.where("done", isEqualTo:false).get().then((event) {
+        for (var doc in event.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          todosCollection.doc(data['id']).set({
+            'task': data['task'],
+            'done': data['done'],
+            'resident-id': data['resident-id'],
+            'shift-id': shiftList.firstWhere((element) => element.name == "evening shift").id,
+          });
+
+          todoList.add(ToDo(
+              id: doc.id,
+              todoText: data['task'],
+              isDone: data['done'],
+              residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
+              residentId: data['resident-id'],
+              shiftId: data['shift-id']
+          ));
+        }
+      });
+
+
+    }else{
+      await todosCollection.where("done", isEqualTo:false).get().then((event) {
+        for (var doc in event.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          todosCollection.doc(data['id']).set({
+            'task': data['task'],
+            'done': data['done'],
+            'resident-id': data['resident-id'],
+            'shift-id': shiftList.firstWhere((element) => element.name == "night shift").id,
+          });
+
+          todoList.add(ToDo(
+              id: doc.id,
+              todoText: data['task'],
+              isDone: data['done'],
+              residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
+              residentId: data['resident-id'],
+              shiftId: data['shift-id']
+          ));
+        }
+      });
+    }
+  }
+
+  getData()async{
+    await getAllShifts();
+    await getActiveShift();
+    getAllResidents();
+    await updateTasksShift();
+    // getAllTasks();
     setState(() {
       _foundToDo = todoList;
-    });
-  }
-  getAllResidents()async{
-    await residentsCollection.get().then((event) {
-      for (var doc in event.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        print("${doc.id} => ${doc.data()}");
-        residentsList.add(
-            Resident(
-              id: doc.id,
-              name: data['name'],
-            )
-        );
-        residentsNameList.add(data['name']);
-      }
-    });
-    setState(() {
-      loading = false;
-    });
-  }
-
-  getAllTasks()async{
-
-    todoList = [];
-    await todosCollection.where("shift-id", isEqualTo: ongoingShift.id).get().then((event) {
-      for (var doc in event.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        todoList.add(
-            ToDo(
-                id: doc.id,
-                todoText: data['task'],
-                isDone: data['done'],
-                residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
-                residentId: data['resident-id'],
-                shiftId: data['shift-id']
-            )
-        );
-      }
-    });
-    setState(() {
-
     });
   }
 
   @override
   void initState() {
-
-    getAllShifts();
-    getAllResidents();
-
-
+    getData();
     super.initState();
   }
 
@@ -215,7 +227,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'done': !todo.isDone,
       'resident-id': todo.residentId,
       'shift-id': todo.shiftId,
-    });
+    }).then((doc) =>  ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Task Marked Done Successfully"))));
     setState(() {
 
       todo.isDone = !todo.isDone;
@@ -235,15 +248,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _addToDoItem(String toDo) {
-    setState(() {
-      todoList.add(ToDo(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        todoText: toDo,
-      ));
-    });
-    _todoController.clear();
-  }
 
   void _runFilter(String enteredKeyword) {
     List<ToDo> results = [];
@@ -262,7 +266,68 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  getShift(){
+
+  getAllShifts()async{
+    setState(() {
+      loading = true;
+    });
+
+    await shiftsCollection.get().then((event) {
+      for (var doc in event.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        // print("${doc.id} => ${doc.data()}");
+        shiftList.add(
+            ShiftModel(
+              id: doc.id,
+              name: data['name'],
+              from: data['from'],
+              to: data['to'],
+            )
+        );
+      }
+    });
+  }
+  getAllResidents()async{
+    await residentsCollection.get().then((event) {
+      for (var doc in event.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        print("${doc.id} => ${doc.data()}");
+        residentsList.add(
+            Resident(
+              id: doc.id,
+              name: data['name'],
+            )
+        );
+        residentsNameList.add(data['name']);
+      }
+    });
+    setState(() {
+      loading = false;
+    });
+  }
+  getAllTasks()async{
+
+    todoList = [];
+    await todosCollection.where("shift-id", isEqualTo: ongoingShift.id).get().then((event) {
+      for (var doc in event.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        todoList.add(
+            ToDo(
+                id: doc.id,
+                todoText: data['task'],
+                isDone: data['done'],
+                residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
+                residentId: data['resident-id'],
+                shiftId: data['shift-id']
+            )
+        );
+      }
+    });
+    setState(() {
+
+    });
+  }
+  getActiveShift(){
     DateTime timeNow = DateTime.now();
     if((timeNow.hour > 6  || (timeNow.hour == 6 &&  timeNow.minute > 30)) && (timeNow.hour < 14) ){
       ongoingShift =shiftList[2];
@@ -275,6 +340,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     });
   }
+
+
 
   Widget searchBox() {
     return Container(
@@ -393,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             hint: const Text('Select shift',
                                 style: TextStyle(color: AppTheme.tdGrey)),
                             iconSize: 35,
-                            icon: Icon(
+                            icon: const Icon(
                               Icons.arrow_drop_down,
                               color: AppTheme.tdBlack,
                             ),
@@ -449,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             hint: const Text('Select Resident',
                                 style: TextStyle(color: AppTheme.tdGrey)),
                             iconSize: 35,
-                            icon: Icon(
+                            icon: const Icon(
                               Icons.arrow_drop_down,
                               color: AppTheme.tdBlack,
                             ),
