@@ -15,7 +15,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final AuthController _auth = AuthController();
   String? _value;
   late int shift;
-  late List<String?> items = ['shift1','shift2','shift3',];
+  late List<String?> items = ['night shift','evening shift','morning shift',];
   bool loading = false;
   String error = '';
   final TextEditingController _name = TextEditingController();

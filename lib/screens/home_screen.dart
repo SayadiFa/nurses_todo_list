@@ -1,13 +1,14 @@
-import 'dart:convert';
+
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:nurses_todo_app/app_theme.dart';
-import 'package:nurses_todo_app/controllers/database_services.dart';
+import 'package:nurses_todo_app/models/resident_model.dart';
 import 'package:nurses_todo_app/models/shift_model.dart';
 import 'package:nurses_todo_app/models/todo_model.dart';
 import 'package:nurses_todo_app/widgets/todo_widget.dart';
-import 'package:provider/provider.dart';
 
 
 
@@ -17,18 +18,31 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-
+List<ShiftModel> shiftsNameList = [];
+List<String> residentsNameList = [];
 class _HomeScreenState extends State<HomeScreen> {
+
+  final CollectionReference todosCollection = FirebaseFirestore.instance.collection('tasks');
+  final CollectionReference shiftsCollection = FirebaseFirestore.instance.collection('shifts');
+  final CollectionReference residentsCollection = FirebaseFirestore.instance.collection('residents');
 
   List<ToDo> _foundToDo = [];
   final _todoController = TextEditingController();
 
+  bool loading = false;
+
 
   List<ToDo> todoList = [];
   List<ShiftModel> shiftList = [];
+
+  List<Resident> residentsList = [];
+
   late ShiftModel ongoingShift;
   getAllShifts()async{
-    final CollectionReference shiftsCollection = FirebaseFirestore.instance.collection('shifts');
+    setState(() {
+      loading = true;
+    });
+
     await shiftsCollection.get().then((event) {
       for (var doc in event.docs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -49,11 +63,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     });
   }
+  getAllResidents()async{
+    await residentsCollection.get().then((event) {
+      for (var doc in event.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        print("${doc.id} => ${doc.data()}");
+        residentsList.add(
+            Resident(
+              id: doc.id,
+              name: data['name'],
+            )
+        );
+        residentsNameList.add(data['name']);
+      }
+    });
+    setState(() {
+      loading = false;
+    });
+  }
 
   getAllTasks()async{
 
     todoList = [];
-    final CollectionReference todosCollection = FirebaseFirestore.instance.collection('tasks');
     await todosCollection.where("shift-id", isEqualTo: ongoingShift.id).get().then((event) {
       for (var doc in event.docs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -75,9 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
+
     getAllShifts();
-    // getShift();
-    // getAllTasks();
+    getAllResidents();
     super.initState();
   }
 
@@ -89,6 +120,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
 
+
+    final loadingWidget = (Platform.isAndroid)
+        ? const CircularProgressIndicator(
+      color: AppTheme.tdBlack,
+    )
+        : const CupertinoActivityIndicator(
+      color: AppTheme.tdBlack,
+    );
+
     return Scaffold(
       floatingActionButton: Container(
         margin: const EdgeInsets.only(
@@ -97,11 +137,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: ElevatedButton(
           onPressed: () {
-            // _addToDoItem(_todoController.text);
-            getAllShifts();
+            openDialog();
           },
           style: ElevatedButton.styleFrom(
-            primary: AppTheme.tdBlue,
+            backgroundColor: AppTheme.tdBlue,
             minimumSize: const Size(60, 60),
             elevation: 10,
           ),
@@ -153,14 +192,21 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          if (loading)
+            Container(
+                height: double.infinity,
+                width: double.infinity,
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: loadingWidget,
+                ))
         ],
       ),
     );
   }
 
   void _handleToDoChange(ToDo todo) async{
-    final CollectionReference todoCollection = FirebaseFirestore.instance.collection('tasks');
-    await todoCollection.doc(todo.id).set({
+    await todosCollection.doc(todo.id).set({
       'task': todo.todoText,
       'done': !todo.isDone,
       'resident-id': todo.residentId,
@@ -173,7 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _deleteToDoItem(String id) {
-    final CollectionReference todosCollection = FirebaseFirestore.instance.collection('tasks');
     todosCollection.doc(id).delete().then(
           (doc) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -254,6 +299,210 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+  Future openDialog() => showDialog(
+      context: context,
+      builder: (context) {
+        final TextEditingController taskDescription = TextEditingController();
+        
+        String? shiftName;
+        String? residentName;
+        late ShiftModel shift;
+        late Resident resident;
+        List<String?> items = ['night shift','evening shift','morning shift',];
+        return StatefulBuilder(
+          builder:(BuildContext context, StateSetter setState){
+             return Dialog(
+              elevation: 2,
+              backgroundColor: AppTheme.tdBGColor,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'Task Details',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.only(
+                      bottom: 20,
+                      right: 20,
+                      left: 20,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.grey,
+                          offset: Offset(0.0, 0.0),
+                          blurRadius: 10.0,
+                          spreadRadius: 0.0,
+                        ),
+                      ],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: TextField(
+                      controller: taskDescription,
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.all(0),
+                        prefixIconConstraints: BoxConstraints(
+                          maxHeight: 20,
+                          minWidth: 25,
+                        ),
+                        border: InputBorder.none,
+                        hintText: 'Task Description',
+                        hintStyle: TextStyle(color: AppTheme.tdGrey),
+                      ),
+                    ),
+                  ),
+                  Container(
+                      margin: const EdgeInsets.only(
+                        bottom: 20,
+                        right: 20,
+                        left: 20,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.grey,
+                            offset: Offset(0.0, 0.0),
+                            blurRadius: 10.0,
+                            spreadRadius: 0.0,
+                          ),
+                        ],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                            style: const TextStyle(color: AppTheme.tdBlack),
+                            hint: const Text('Select shift',
+                                style: TextStyle(color: AppTheme.tdGrey)),
+                            iconSize: 35,
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: AppTheme.tdBlack,
+                            ),
+                            value: shiftName,
+                            isExpanded: true,
+                            items: items
+                                .map<DropdownMenuItem<String>>((String? value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text('\t \t \t \t ${value!}'),
+                              );
+                            }).toList(),
+                            onChanged: (value) => setState(() {
+                              shiftName = value;
+                                  shift = shiftList.firstWhere(
+                                      (element) => element.name == value);
+                                  if (value == 'evening shift') {
+                                    shift = shiftList[1];
+                                  }
+                                  if (value == 'night shift') {
+                                    shift = shiftList[0];
+                                  }
+                                  if (value == 'morning shift') {
+                                    shift = shiftList[2];
+                                  }
+                                })),
+                      )),
+                  Container(
+                      margin: const EdgeInsets.only(
+                        bottom: 20,
+                        right: 20,
+                        left: 20,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.grey,
+                            offset: Offset(0.0, 0.0),
+                            blurRadius: 10.0,
+                            spreadRadius: 0.0,
+                          ),
+                        ],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                            style: const TextStyle(color: AppTheme.tdBlack),
+                            hint: const Text('Select Resident',
+                                style: TextStyle(color: AppTheme.tdGrey)),
+                            iconSize: 35,
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: AppTheme.tdBlack,
+                            ),
+                            value: residentName,
+                            isExpanded: true,
+                            items: residentsNameList
+                                .map<DropdownMenuItem<String>>((String? value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text('\t \t \t \t ${value!}'),
+                              );
+                            }).toList(),
+                            onChanged: (value) => setState(() {
+                              residentName = value;
+                                  resident = residentsList.firstWhere(
+                                      (element) => element.name == value);
+                                  if (value == 'evening shift') {
+                                    shift = shiftList[1];
+                                  }
+                                  if (value == 'night shift') {
+                                    shift = shiftList[0];
+                                  }
+                                  if (value == 'morning shift') {
+                                    shift = shiftList[2];
+                                  }
+                                })),
+                      )),
+                  SizedBox(
+                      height: 45,
+                      width: 150,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final task = <String, dynamic>{
+                            "done": false,
+                            "resident-id": resident.id,
+                            "shift-id": shift.id,
+                            "task": taskDescription.text,
+                          };
+                          await todosCollection.doc().set(task).onError((e, _) =>
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text("Couldn't Task"))));
+                          await getAllTasks();
+                          Navigator.pop(context);
+                        },
+                        style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all<Color>(
+                                AppTheme.tdBlue)),
+                        child: const Text('Create Task'),
+                      )),
+                ],
+              ),
+            );
+          },
+        );
+      }
+  );
 
   AppBar _buildAppBar() {
     return AppBar(
@@ -274,5 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // )
       ],
     );
+
+
   }
 }
