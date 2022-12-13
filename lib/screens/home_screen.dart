@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     getShift();
     getAllTasks();
     setState(() {
-
+      _foundToDo = todoList;
     });
   }
   getAllResidents()async{
@@ -93,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 id: doc.id,
                 todoText: data['task'],
                 isDone: data['done'],
+                residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
                 residentId: data['resident-id'],
                 shiftId: data['shift-id']
             )
@@ -110,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     getAllShifts();
     getAllResidents();
 
-    _foundToDo = todoList;
+
     super.initState();
   }
 
@@ -155,54 +156,55 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       backgroundColor: AppTheme.tdBGColor,
-      appBar: _buildAppBar(),
-      body: Stack(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 15,
-            ),
-            child: Column(
-              children: [
-                searchBox(),
-                Expanded(
-                  child: ListView(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(
-                          top: 50,
-                          bottom: 20,
-                        ),
-                        child: const Text(
-                          'All ToDos',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w500,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 15,
+              ),
+              child: Column(
+                children: [
+                  searchBox(),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(
+                            top: 50,
+                            bottom: 20,
+                          ),
+                          child: const Text(
+                            'All ToDos',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                      for (ToDo todoo in _foundToDo)
-                        ToDoWidget(
-                          todo: todoo,
-                          onToDoChanged: _handleToDoChange,
-                          onDeleteItem: _deleteToDoItem,
-                        ),
-                    ],
-                  ),
-                )
-              ],
+                        for (ToDo todoo in _foundToDo)
+                          ToDoWidget(
+                            todo: todoo,
+                            onToDoChanged: _handleToDoChange,
+                            onDeleteItem: _deleteToDoItem,
+                          ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
             ),
-          ),
-          if (loading)
-            Container(
-                height: double.infinity,
-                width: double.infinity,
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: loadingWidget,
-                ))
-        ],
+            if (loading)
+              Container(
+                  height: double.infinity,
+                  width: double.infinity,
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: loadingWidget,
+                  ))
+          ],
+        ),
       ),
     );
   }
@@ -505,27 +507,5 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
   );
-
-  AppBar _buildAppBar() {
-    return AppBar(
-      backgroundColor: AppTheme.tdBGColor,
-      elevation: 0,
-      actions: [
-        // InkWell(
-        //   onTap: (){
-        //
-        //   },
-        //   child: Row(
-        //     children: const [
-        //       Text('Add Resident', style: TextStyle(color: Colors.black),),
-        //       Icon(Icons.add, color: AppTheme.tdBlack,)
-        //
-        //     ],
-        //   ),
-        // )
-      ],
-    );
-
-
-  }
+  //
 }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ToDo {
   String? id;
   String? residentId;
+  String? residentName;
   String? shiftId;
   String? todoText;
   bool isDone;
@@ -12,6 +13,7 @@ class ToDo {
     required this.todoText,
     this.isDone = false,
     this.residentId,
+    this.residentName,
     this.shiftId,
   });
 

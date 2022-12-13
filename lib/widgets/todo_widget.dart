@@ -45,6 +45,14 @@ class ToDoWidget extends StatelessWidget {
             decoration: todo.isDone ? TextDecoration.lineThrough : null,
           ),
         ),
+        subtitle: Text(
+          todo.residentName!,
+          style: TextStyle(
+            fontSize: 14,
+            color: AppTheme.tdBlack.withOpacity(0.6),
+            decoration: todo.isDone ? TextDecoration.lineThrough : null,
+          ),
+        ),
         trailing: Container(
           padding: const EdgeInsets.all(0),
           margin: const EdgeInsets.symmetric(vertical: 12),
