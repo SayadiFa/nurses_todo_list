@@ -16,14 +16,14 @@ class AuthController{
     return _auth.authStateChanges().map((event) => _userFromFirebase(event!));
   }
 
-  Future register(String email, String password, String name, int shift)async{
+  Future register(String email, String password, String name)async{
     try{
       UserCredential credential = await _auth.createUserWithEmailAndPassword(email: email, password: password,);
       User? user = credential.user;
 
 
       if(user != null){
-        await DataBaseServices(uid: user.uid).updateUser(name, shift);
+        await DataBaseServices(uid: user.uid).updateUser(name);
       }
       return _userFromFirebase(user!);
     } catch(e){

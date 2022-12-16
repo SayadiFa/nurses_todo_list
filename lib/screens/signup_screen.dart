@@ -163,68 +163,6 @@ class _SignupScreenState extends State<SignupScreen> {
                               hintText: 'password', border: InputBorder.none),
                         ),
                       ),
-                      Container(
-                        margin: const EdgeInsets.only(
-                          bottom: 20,
-                          right: 20,
-                          left: 20,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.grey,
-                              offset: Offset(0.0, 0.0),
-                              blurRadius: 10.0,
-                              spreadRadius: 0.0,
-                            ),
-                          ],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                              style: const TextStyle(
-                                  color: AppTheme.tdBlack),
-                              hint: Text(
-                                'Select shift',
-                                style: TextStyle(
-                                    color:
-                                    AppTheme.tdBlack),
-                              ),
-                              iconSize: 35,
-                              icon: Icon(
-                                Icons.arrow_drop_down,
-                                color: AppTheme.tdBlack,
-                              ),
-                              value: _value,
-                              isExpanded: true,
-                              items: items.map<
-                                  DropdownMenuItem<String>>(
-                                      (String? value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(
-                                          '\t \t \t \t ${value!}'),
-                                    );
-                                  }).toList(),
-                              onChanged: (value) =>
-                                  setState(() {
-                                    _value =value;
-                                    if(value == 'shift1'){
-                                      shift =1;
-                                    }if(value == 'shift2'){
-                                      shift =2;
-                                    }if(value == 'shift3'){
-                                      shift =3;
-                                    }
-                                  })),
-                        ),
-                      ),
-                      const SizedBox(height: 12.0),
                       Text(
                         error,
                         style:
@@ -240,7 +178,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
                                 setState(() => loading = true);
-                                dynamic result = await _auth.register(_email.text, _password.text, _name.text, shift);
+                                dynamic result = await _auth.register(_email.text, _password.text, _name.text);
                                 print(result);
                                 if (result == null) {
                                   setState(() =>

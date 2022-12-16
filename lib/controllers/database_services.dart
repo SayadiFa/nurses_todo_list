@@ -11,10 +11,9 @@ class DataBaseServices {
 
 
 
-  Future updateUser(String name, int shift) async {
+  Future updateUser(String name) async {
     return await usersCollection.doc(uid).set({
       'name': name,
-      'shift': shift,
     });
   }
 
