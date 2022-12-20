@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:nurses_todo_app/app_theme.dart';
+import 'package:nurses_todo_app/controllers/database_services.dart';
 import 'package:nurses_todo_app/models/resident_model.dart';
 import 'package:nurses_todo_app/models/shift_model.dart';
 import 'package:nurses_todo_app/models/todo_model.dart';
@@ -22,6 +23,8 @@ List<ShiftModel> shiftsNameList = [];
 List<String> residentsNameList = [];
 class _HomeScreenState extends State<HomeScreen> {
 
+  DataBaseServices _dataBaseServices = DataBaseServices();
+
   final CollectionReference todosCollection = FirebaseFirestore.instance.collection('tasks');
   final CollectionReference shiftsCollection = FirebaseFirestore.instance.collection('shifts');
   final CollectionReference residentsCollection = FirebaseFirestore.instance.collection('residents');
@@ -34,90 +37,24 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ToDo> todoList = [];
   List<ShiftModel> shiftList = [];
 
-  List<Resident> residentsList = [];
+  List<ResidentModel> residentsList = [];
 
   late ShiftModel ongoingShift;
 
-  updateTasksShift() async{
-    DateTime timeNow = DateTime.now();
-    if((timeNow.hour > 6  || (timeNow.hour == 6 &&  timeNow.minute > 30)) && (timeNow.hour < 14) || (timeNow.hour == 6 &&  timeNow.minute == 30)){
-      await todosCollection.where("done", isEqualTo:false).get().then((event) {
-        for (var doc in event.docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          todosCollection.doc(data['id']).set({
-            'task': data['task'],
-            'done': data['done'],
-            'resident-id': data['resident-id'],
-            'shift-id': shiftList.firstWhere((element) => element.name == "morning shift").id,
-          });
 
-          todoList.add(ToDo(
-              id: doc.id,
-              todoText: data['task'],
-              isDone: data['done'],
-              residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
-              residentId: data['resident-id'],
-              shiftId: data['shift-id']
-          ));
-        }
-      });
-
-      
-    }else if(((timeNow.hour > 14) && (timeNow.hour < 21 ||(timeNow.hour == 21 && timeNow.minute < 30))) || (timeNow.hour == 14)){
-      await todosCollection.where("done", isEqualTo:false).get().then((event) {
-        for (var doc in event.docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          todosCollection.doc(data['id']).set({
-            'task': data['task'],
-            'done': data['done'],
-            'resident-id': data['resident-id'],
-            'shift-id': shiftList.firstWhere((element) => element.name == "evening shift").id,
-          });
-
-          todoList.add(ToDo(
-              id: doc.id,
-              todoText: data['task'],
-              isDone: data['done'],
-              residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
-              residentId: data['resident-id'],
-              shiftId: data['shift-id']
-          ));
-        }
-      });
-
-
-    }else{
-      await todosCollection.where("done", isEqualTo:false).get().then((event) {
-        for (var doc in event.docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          todosCollection.doc(data['id']).set({
-            'task': data['task'],
-            'done': data['done'],
-            'resident-id': data['resident-id'],
-            'shift-id': shiftList.firstWhere((element) => element.name == "night shift").id,
-          });
-
-          todoList.add(ToDo(
-              id: doc.id,
-              todoText: data['task'],
-              isDone: data['done'],
-              residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
-              residentId: data['resident-id'],
-              shiftId: data['shift-id']
-          ));
-        }
-      });
-    }
-  }
 
   getData()async{
-    await getAllShifts();
+    setState(() {
+      loading = true;
+    });
+    await _dataBaseServices.getAllShifts(shiftList);
     await getActiveShift();
-    getAllResidents();
-    await updateTasksShift();
+    await _dataBaseServices.getAllResidents(residentsList);
+    await _dataBaseServices.updateTasksShift(todoList, residentsList, shiftList, ongoingShift);
     // getAllTasks();
     setState(() {
       _foundToDo = todoList;
+      loading = false;
     });
   }
 
@@ -267,66 +204,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  getAllShifts()async{
-    setState(() {
-      loading = true;
-    });
 
-    await shiftsCollection.get().then((event) {
-      for (var doc in event.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        // print("${doc.id} => ${doc.data()}");
-        shiftList.add(
-            ShiftModel(
-              id: doc.id,
-              name: data['name'],
-              from: data['from'],
-              to: data['to'],
-            )
-        );
-      }
-    });
-  }
-  getAllResidents()async{
-    await residentsCollection.get().then((event) {
-      for (var doc in event.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        print("${doc.id} => ${doc.data()}");
-        residentsList.add(
-            Resident(
-              id: doc.id,
-              name: data['name'],
-            )
-        );
-        residentsNameList.add(data['name']);
-      }
-    });
-    setState(() {
-      loading = false;
-    });
-  }
-  getAllTasks()async{
 
-    todoList = [];
-    await todosCollection.where("shift-id", isEqualTo: ongoingShift.id).get().then((event) {
-      for (var doc in event.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        todoList.add(
-            ToDo(
-                id: doc.id,
-                todoText: data['task'],
-                isDone: data['done'],
-                residentName: residentsList.firstWhere((element) => element.id==data['resident-id']).name,
-                residentId: data['resident-id'],
-                shiftId: data['shift-id']
-            )
-        );
-      }
-    });
-    setState(() {
 
-    });
-  }
   getActiveShift(){
     DateTime timeNow = DateTime.now();
     if((timeNow.hour > 6  || (timeNow.hour == 6 &&  timeNow.minute > 30)) && (timeNow.hour < 14) ){
@@ -336,9 +216,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }else{
       ongoingShift =shiftList[0];
     }
-    setState(() {
-
-    });
   }
 
 
@@ -378,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
         String? shiftName;
         String? residentName;
         late ShiftModel shift;
-        late Resident resident;
+        late ResidentModel resident;
         List<String?> items = ['night shift','evening shift','morning shift',];
         return StatefulBuilder(
           builder:(BuildContext context, StateSetter setState){
@@ -555,11 +432,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             "shift-id": shift.id,
                             "task": taskDescription.text,
                           };
-                          await todosCollection.doc().set(task).onError((e, _) =>
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text("Couldn't Task"))));
-                          await getAllTasks();
+                          await _dataBaseServices.updateTodo(context, task);
+                          await _dataBaseServices.getAllTasks(todoList, residentsList, ongoingShift);
                           Navigator.pop(context);
                         },
                         style: ButtonStyle(

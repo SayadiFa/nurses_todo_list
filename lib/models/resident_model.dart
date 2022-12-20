@@ -1,9 +1,9 @@
 
-class Resident{
+class ResidentModel{
 
   final String id;
   final String name;
 
-  Resident({required this.id,required this.name});
+  ResidentModel({required this.id,required this.name});
 
 }
